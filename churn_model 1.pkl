@@ -1,0 +1,88 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score, roc_curve, precision_score, recall_score, f1_score, accuracy_score
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Load dataset
+df = pd.read_csv(r"C:\Users\atpt1\coustomer churn\Churn_Modelling.csv")
+
+# Drop irrelevant columns
+df.drop(['RowNumber', 'CustomerId', 'Surname'], axis=1, inplace=True)
+
+# One-hot encode categorical variables
+df = pd.get_dummies(df, columns=['Geography', 'Gender'], drop_first=True)
+
+# Define features and target
+X = df.drop("Exited", axis=1)
+y = df["Exited"]
+
+# Split into train and test
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+
+# Standardize numeric features
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# -------------------------
+# Logistic Regression Model
+# -------------------------
+logreg = LogisticRegression()
+logreg.fit(X_train_scaled, y_train)
+y_pred_log = logreg.predict(X_test_scaled)
+y_proba_log = logreg.predict_proba(X_test_scaled)[:, 1]
+
+# -------------------------
+# Decision Tree Model
+# -------------------------
+tree = DecisionTreeClassifier(max_depth=5, random_state=42)
+tree.fit(X_train, y_train)
+y_pred_tree = tree.predict(X_test)
+y_proba_tree = tree.predict_proba(X_test)[:, 1]
+
+# -------------------------
+# Evaluation Function
+# -------------------------
+def evaluate_model(y_true, y_pred, y_proba, model_name):
+    print(f"\n--- {model_name} ---")
+    print("Accuracy:", accuracy_score(y_true, y_pred))
+    print("Precision:", precision_score(y_true, y_pred))
+    print("Recall:", recall_score(y_true, y_pred))
+    print("F1 Score:", f1_score(y_true, y_pred))
+    print("ROC AUC:", roc_auc_score(y_true, y_proba))
+    print("Confusion Matrix:\n", confusion_matrix(y_true, y_pred))
+
+    # Plot ROC Curve
+    fpr, tpr, _ = roc_curve(y_true, y_proba)
+    plt.figure()
+    plt.plot(fpr, tpr, label=f'{model_name} (AUC = {roc_auc_score(y_true, y_proba):.2f})')
+    plt.plot([0,1], [0,1], linestyle='--')
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title(f"ROC Curve - {model_name}")
+    plt.legend()
+    plt.show()
+
+# Evaluate both models
+evaluate_model(y_test, y_pred_log, y_proba_log, "Logistic Regression")
+evaluate_model(y_test, y_pred_tree, y_proba_tree, "Decision Tree")
+
+# -------------------------
+# Cutoff Tuning for Logistic Regression
+# -------------------------
+def cutoff_analysis(y_true, y_probs, cutoff):
+    y_pred_cutoff = (y_probs >= cutoff).astype(int)
+    print(f"\nCutoff: {cutoff}")
+    print("Accuracy:", accuracy_score(y_true, y_pred_cutoff))
+    print("Recall:", recall_score(y_true, y_pred_cutoff))
+    print("Precision:", precision_score(y_true, y_pred_cutoff))
+    print("F1 Score:", f1_score(y_true, y_pred_cutoff))
+
+# Try different thresholds
+for threshold in [0.5, 0.4, 0.3]:
+    cutoff_analysis(y_test, y_proba_log, threshold)
