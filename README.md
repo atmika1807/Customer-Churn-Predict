@@ -50,12 +50,3 @@ bash
 Copy
 Edit
 streamlit run ap_1.py
-🔮 Future Enhancements
-Add feature importance visualization
-
-Log and export predictions
-
-Integrate SHAP/LIME for model explainability
-
-Deploy to Streamlit Cloud for public access
-
